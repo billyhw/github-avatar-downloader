@@ -65,7 +65,7 @@ function getAvatars(err, result, body) {
       downloadImageByURL(x.avatar_url, "./avatar/" + x.login + ".jpg") ;});
   } else if (result.statusCode === 404) {
     console.log('endpoint not found!');
-    return
+    return;
   }
 }
 
