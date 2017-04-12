@@ -1,22 +1,9 @@
 // require the request and fs module
+require('dotenv').config()
 var request = require('request');
 var fs = require('fs');
-require('dotenv').config()
 
 console.log('Welcome to the Github Avatar Downloader!');
-
-// check for existence of .env, and check whether .env has a GITHUB_USER and a GITHUB_TOKEN field
-fs.exists('.env', function(exists) {
-  if (!exists) {
-    console.log('Note that a .env file with your github user name and API Token is not found.');
-    console.log('This may not affect the download, but may run into issues if your IP address has exceeded Github daily download limit.');
-  } else {
-    if (process.env.GITHUB_USER === undefined || process.env.GITHUB_TOKEN === undefined) {
-      console.log("Note that the .env file may be missing a GITHUB_USER or a GITHUB_TOKEN value.")
-      console.log('This may not affect the download, but may run into issues if your IP address has exceeded Github daily download limit.');
-    }
-  }
-});
 
 // The function to obtain repository contributors URL
 // input:
@@ -25,10 +12,10 @@ fs.exists('.env', function(exists) {
 // cb: a callback function to handle errors and return results
 function getRepoContributors(repoOwner, repoName, cb) {
   // check if repoOwner or repoName are undefined (i.e. not supplied)
-  // or if too many arguments are provided if so return error
-  if (repoOwner === undefined || repoName === undefined || process.argv.length > 4 || process.argv.length === 2) {
+  // if so return error
+  if (repoOwner === undefined || repoName === undefined) {
     try {
-      throw Error("Please supply only a repository owner name and repository name.");
+      throw Error("Please supply a repository owner name and repository name.");
     } catch (e) {
       console.log(e.name + ": " + e.message);
     }
@@ -66,30 +53,46 @@ function getAvatars(err, result, body) {
     return;
   }
   // check statusCode, if == 200  then obtain the avatar from the avatar url
-  if (result.statusCode === 200) {
-    // check if photo_dir exist
-    var photo_dir = "./avatar/";
-    fs.exists(photo_dir, function(exists) {
-      if (!exists) {
-        try {
-            throw Error(`photo directory ${photo_dir} does not exist.`);
-          } catch (e) {
-            console.log(e.name + ": " + e.message);
-          }
-        }
-        else {
-          // proceed to downloading the photos.
-          var json =  JSON.parse(body);
-          json.forEach(function(x) {
-            // note here we name each avatar .jpg by the login id name
-            downloadImageByURL(x.avatar_url, photo_dir + x.login + ".jpg") ;});
-        }
+  // if == 404 return not found
+
+  var urlCount = {};
+
+  var json =  JSON.parse(body);
+
+  console.log(json.length)
+
+  //for (i of json) { console.log(i.starred_url);}
+
+  for (var i of json) {
+
+    var requestURLStar = {
+      url: i.starred_url.replace(/{\/owner}{\/repo}/,''),
+      headers: {
+        'User-Agent': 'GitHub Avatar Downloader - Student Project'
+      }
+    };
+
+    console.log(requestURLStar.url);
+
+    request(requestURLStar, function(err, result, body) {
+       var jsonStar = JSON.parse(body);
+       console.log('jsonStar:', jsonStar);
+       for (var j in jsonStar) {
+          var key = jsonStar[j]["message"];
+         console.log(key);
+         if (urlCount.hasOwnProperty(key)) {
+           urlCount[key] = 0;
+         } else {
+           urlCount[key] += 1;
+         }
+       }
     });
-  } else if (result.statusCode === 404) {
-    // if == 404 return not found
-    console.error(`Requested repository '${process.argv[2]}' and/or repository owner '${process.argv[3]}' not found.`);
-  }
+
 }
+  console.log(urlCount);
+}
+
+
 
 // a manual test
 
